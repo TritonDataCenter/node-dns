@@ -1,13 +1,15 @@
+[![wercker status](https://app.wercker.com/status/ed5cab9035dfb9167714f305340490c2/s/master "wercker status")](https://app.wercker.com/project/byKey/ed5cab9035dfb9167714f305340490c2)
 [![Build Status](https://secure.travis-ci.org/tjfontaine/node-dns.png)](http://travis-ci.org/tjfontaine/node-dns)
 
 native-dns -- A replacement DNS stack for node.js
 =================================================
 
-# PROJECT NO LONGER MAINTAINED. [MAY THE BEST FORK WIN!](https://github.com/tjfontaine/node-dns/issues/111)
+# Maintenance
 
-Visit [this issue](https://github.com/tjfontaine/node-dns/issues/111) to suggest or vote on a fork!
+This project is not actively maintained, it's left here for historical reasons,
+and when I (TJ) have time I come back to it.
 
-Link to winning fork will be placed here.
+Feel free to fork and name the repo and npm package whatever you will.
 
 # (Below follows original README)
 

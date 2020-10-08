@@ -37,12 +37,15 @@ function checkWrap(test, req) {
   test.ok(typeof req === 'object');
 }
 
+var REMOTE_DNS = require('../test_utils').REMOTE_DNS;
+var REMOTE_PORT = require('../test_utils').REMOTE_PORT;
+
 var fixed = false;
 
 var fixupDns = function () {
   platform.name_servers = [{
-    address: '8.8.8.8',
-    port: 53,
+    address: REMOTE_DNS,
+    port: REMOTE_PORT,
   }];
 
   platform.search_path = [];
@@ -60,7 +63,7 @@ exports.setUp = function (cb) {
     if (fixed) {
       cb();
     } else {
-      process.nextTick(checkReady);
+      setImmediate(checkReady);
     }
   }
   checkReady();
@@ -158,6 +161,7 @@ exports.resolveMx = function (test) {
   var req = dns.resolveMx('gmail.com', function(err, result) {
     test.ifError(err);
 
+    test.ok(result);
     test.ok(result.length > 0);
 
     for (var i = 0; i < result.length; i++) {
@@ -251,7 +255,7 @@ exports.resolveTxt = function (test) {
   var req = dns.resolveTxt('google.com', function(err, records) {
     test.ifError(err);
     test.equal(records.length, 1);
-    test.equal(records[0].indexOf('v=spf1'), 0);
+    test.equal(records[0][0].indexOf('v=spf1'), 0);
     test.done();
   });
 

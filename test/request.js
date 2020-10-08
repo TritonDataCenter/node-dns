@@ -9,6 +9,9 @@ var q = Question({
   type: consts.NAME_TO_QTYPE.A,
 });
 
+var REMOTE_DNS = require('../test_utils').REMOTE_DNS;
+var REMOTE_PORT = require('../test_utils').REMOTE_PORT;
+
 var noServer = {
   address: '127.0.0.1',
   port: 19999,
@@ -16,14 +19,14 @@ var noServer = {
 };
 
 var udpServ = {
-  address: '8.8.8.8',
-  port: 53,
+  address: REMOTE_DNS,
+  port: REMOTE_PORT,
   type: 'udp',
 };
 
 var tcpServ = {
-  address: '8.8.8.8',
-  port: 53,
+  address: REMOTE_DNS,
+  port: REMOTE_PORT,
   type: 'tcp',
 };
 
@@ -77,34 +80,13 @@ exports.udpResponse = function (test) {
   r.send();
 };
 
-exports.tcpResponse = function (test) {
-  var r = Request({
-    question: q,
-    server: tcpServ,
-    timeout: 4000,
-  });
-
-  r.on('message', function (err, answer) {
-    test.ok(!err, 'TCP Request should not error');
-    test.ok(answer, 'No TCP answer provided');
-    test.ok(answer.answer.length > 0, 'No answers found');
-  });
-
-  r.on('timeout', function () {
-    test.ok(false, 'TCP Requests should not timeout');
-  });
-
-  r.on('end', function () {
-    test.done();
-  });
-
-  r.send();
-};
-
 exports.serverString = function (test) {
+  if (REMOTE_PORT != 53)
+      return test.done();
+
   var r = Request({
     question: q,
-    server: '8.8.8.8',
+    server: REMOTE_DNS,
   });
 
   r.on('message', function (err, answer) {
@@ -128,7 +110,8 @@ exports.questionString = function (test) {
       name: 'www.google.com',
       type: 'a',
     }),
-    server: '8.8.8.8',
+    server: udpServ,
+    timeout: 10 * 1000,
   });
 
   r.on('message', function (err, answer) {
@@ -175,30 +158,14 @@ exports.emptyUdp = function (test) {
   socket.bind();
 };
 
-exports.longName = function (test) {
+exports.longNameOver253 = function (test) {
   var didErr = false;
   var r = Request({
     question: Question({
-      name: '*************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************'
-        + '***************',
+      name: '123456789012345678901234567890123456789012345678901234567890123.' +
+      '123456789012345678901234567890123456789012345678901234567890123.' +
+      '123456789012345678901234567890123456789012345678901234567890123.' +
+      '1234567890123456789012345678901234567890123456789012345678.com',
     }),
     server: '8.8.8.8',
     timeout: 1000,
@@ -206,11 +173,109 @@ exports.longName = function (test) {
   r.on('error', function (err) {
     test.ok(err, 'We should error because the packet failed to pack');
     didErr = true;
+    test.done();
   });
   r.on('end', function () {
     test.ok(didErr, 'We did not err');
     test.done();
   });
+  r.send();
+};
+
+exports.longNameLabelOver63 = function (test) {
+  var didErr = false;
+  var r = Request({
+    question: Question({
+      name: '123456789012345678901234567890123456789012345678901234567890123.' +
+      '1234567890123456789012345678901234567890123456789012345678901231.' +
+      '123456789012345678901234567890123456789012345678901234567890123.' +
+      '1234567890123456789012345678901234567890123456789012345678.com',
+    }),
+    server: '8.8.8.8',
+    timeout: 1000,
+  });
+  r.on('error', function (err) {
+    test.ok(err, 'We should error because the packet failed to pack');
+    didErr = true;
+    test.done();
+  });
+  r.on('end', function () {
+    test.ok(didErr, 'We did not err');
+    test.done();
+  });
+  r.send();
+};
+
+exports.udpRequestLocalhost = function (test) {
+  var r = Request({
+    question: q,
+    server: '169.254.169.254',
+    timeout: 100,
+  });
+
+  r.on('message', function (err, answer) {
+    test.ok(false, 'UDP Request should have timed-out');
+  });
+
+  r.on('timeout', function () {
+    test.ok(true, 'UDP Requests should timeout');
+  });
+
+  r.on('end', function () {
+    test.done();
+  });
+
+  r.send();
+};
+
+exports.tcpRequestLocalhost = function (test) {
+  var r = Request({
+    question: q,
+      // maybe you got here because something is actually listening? SORRY!
+    server: {address: '127.0.0.1', type: 'tcp', port: 53535},
+    timeout: 100,
+  });
+
+  r.on('message', function (err, answer) {
+    test.ok(false, 'TCP Request should have timed-out');
+  });
+
+  r.on('error', function (err) {
+    test.ok(err.code == 'ECONNREFUSED', 'TCP Requests should error with ECONNREFUSED');
+  });
+
+  r.on('timeout', function () {
+    test.ok(false, 'TCP Requests should not timeout');
+  });
+
+  r.on('end', function () {
+    test.done();
+  });
+
+  r.send();
+};
+
+exports.tcpResponse = function (test) {
+  var r = new Request({
+    question: q,
+    server: tcpServ,
+    timeout: 4000,
+  });
+
+  r.on('message', function (err, answer) {
+    test.ok(!err, 'TCP Request should not error');
+    test.ok(answer, 'No TCP answer provided');
+    test.ok(answer.answer.length > 0, 'No answers found');
+  });
+
+  r.on('timeout', function () {
+    test.ok(false, 'TCP Requests should not timeout');
+  });
+
+  r.on('end', function () {
+    test.done();
+  });
+
   r.send();
 };
 
